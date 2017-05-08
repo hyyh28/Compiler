@@ -1,0 +1,5 @@
+/Users/huayun/Desktop/c#project/myCompiler/myCompiler/bin/Debug/myCompiler.exe
+/Users/huayun/Desktop/c#project/myCompiler/myCompiler/bin/Debug/myCompiler.exe.mdb
+/Users/huayun/Desktop/c#project/myCompiler/myCompiler/obj/Debug/myCompiler.csprojResolveAssemblyReference.cache
+/Users/huayun/Desktop/c#project/myCompiler/myCompiler/obj/Debug/myCompiler.exe
+/Users/huayun/Desktop/c#project/myCompiler/myCompiler/obj/Debug/myCompiler.exe.mdb

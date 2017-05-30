@@ -3,8 +3,10 @@ using System.Collections.Generic;
 using System.IO;
 using System.Text.RegularExpressions;
 using System.Linq;
+//by huayun 2017-5-8 project of Fundamentals of Compiling
 namespace myCompiler
 {
+
     public enum TokenType
     {
         Comment,
@@ -21,6 +23,18 @@ namespace myCompiler
         Terminal,
         NonTerminal,
         No
+    }
+
+    public struct symbol
+    {
+        public Token theTok;
+        public string theNum;
+
+        public symbol(Token tok, string num)
+        {
+            theTok = tok;
+            theNum = num;
+        }
     }
 
     public struct Token
@@ -186,6 +200,31 @@ namespace myCompiler
         private List<Token> _myTokenList;
         private Stack<_Right> _solutionStack = new Stack<_Right>();
         private List<Sheet> _solutionSheet = new List<Sheet>();
+        private List<Token> error_sheet = new List<Token>();
+        private List<symbol> symbols_sheet = new List<symbol>();
+
+        private void IntilizesymbolSheet()
+        {
+            for (int i = 0; i < _myTokenList.Count; i++)
+            {
+                if (_myTokenList[i].Type == TokenType.Identifier && _myTokenList[i + 1].TokenString == "=")
+                {
+                    if (_myTokenList[i + 2].Type == TokenType.Numbers)
+                    {
+                        bool isIn = false;
+                        foreach (var item in symbols_sheet)
+                        {
+                            if (_myTokenList[i].TokenString == item.theTok.ToString())
+                                isIn = true;
+                        }
+                        if (isIn == false)
+                        {
+                            symbols_sheet.Add(new symbol(_myTokenList[i], "int"));
+                        }
+                    }
+                }
+            }
+        }
         private void IntilizeTerminal()
         {
             _terminal.Add("if");//0
@@ -405,6 +444,26 @@ namespace myCompiler
             IntilizeProductions();
             IntilizeSheet();
             _myTokenList = result;
+            IntilizesymbolSheet();
+        }
+
+        public void print_Symbol_sheet()
+        {
+            Console.WriteLine("Symbol Table");
+            foreach (var symbol in symbols_sheet)
+            {
+                Console.WriteLine(symbol.theNum + ": " + symbol.theTok.TokenString + " Line: " + symbol.theTok.RowNum +
+                                  " Position: " + symbol.theTok.Position);
+            }
+        }
+
+        public void Print_Error()
+        {
+            Console.WriteLine(error_sheet.Count + " ERRORS");
+            foreach (var error in error_sheet)
+            {
+                error.PrintToken();
+            }
         }
 
         public void Print_Productions()
@@ -434,6 +493,9 @@ namespace myCompiler
             Console.WriteLine("Analuysis Begin:");
             foreach (var token in _myTokenList)
             {
+                int count = 0;
+                bool isFind = false;
+                bool isput_in_error_stack = false;
                 string tok = return_token_type(token);
                 while (!(_solutionStack.Peek().RightType == Symbol.Terminal &&
                          _terminal[_solutionStack.Peek().RightPos] == tok))
@@ -443,40 +505,52 @@ namespace myCompiler
                     foreach (var item in _solutionSheet)
                     {
                         int i = _solutionStack.Peek().RightPos;
-                        if (item.Terminal == tok &&item.Nonterminal == _nonTerminal[i])
+                        if (item.Terminal == tok && i <= 13 && item.Nonterminal == _nonTerminal[i])
                         {
                             tmp = item;
+                            isFind = true;
                             break;
                         }
-                        else
+                    }
+                    if (isFind == false)
+                    {
+                        error_sheet.Add(token);
+                        isput_in_error_stack = true;
+                        break;
+                    }
+                    else
+                    {
+                        var test = _solutionStack.Pop();
+                        //foreach (var item in tmp.Product.Right)
+                        for (int i = tmp.Product.Right.Length - 1; i > -1; i--)
                         {
-                            continue;
+                            if (tmp.Product.Right[i].RightType == Symbol.No)
+                                break;
+                            _solutionStack.Push(tmp.Product.Right[i]);
                         }
+                        if (count == 0)
+                        {
+                            Console.Write("Now is the ");
+                            token.PrintToken();
+                            count++;
+                        }
+                        Console.Write("    "+_nonTerminal[tmp.Product.Left] + " --> ");
+                        foreach (var t in tmp.Product.Right)
+                        {
+                            string Tmp;
+                            if (t.RightType == Symbol.Terminal)
+                                Tmp = _terminal[t.RightPos];
+                            else if (t.RightType == Symbol.No)
+                                Tmp = _terminal[20];
+                            else
+                                Tmp = _nonTerminal[t.RightPos];
+                            Console.Write(Tmp + " ");
+                        }
+                        Console.Write("\n");
                     }
-                    var test = _solutionStack.Pop();
-                    //foreach (var item in tmp.Product.Right)
-                    for(int i = tmp.Product.Right.Length-1; i > -1; i--)
-                    {
-                        if (tmp.Product.Right[i].RightType == Symbol.No)
-                            break;
-                        _solutionStack.Push(tmp.Product.Right[i]);
-                    }
-                    Console.WriteLine(tok + " output: ");
-                    Console.Write(_nonTerminal[tmp.Product.Left] + " --> ");
-                    foreach (var t in tmp.Product.Right)
-                    {
-                        string Tmp;
-                        if (t.RightType == Symbol.Terminal)
-                            Tmp = _terminal[t.RightPos];
-                        else if (t.RightType == Symbol.No)
-                            Tmp = _terminal[20];
-                        else
-                            Tmp = _nonTerminal[t.RightPos];
-                        Console.Write(Tmp+" ");
-                    }
-                    Console.Write("\n");
                 }
-                Console.WriteLine("match: " + _terminal[_solutionStack.Peek().RightPos]);
+                if(isFind == false && isput_in_error_stack == true) continue;
+                Console.WriteLine("match: " + _terminal[_solutionStack.Peek().RightPos]+"\n");
                 _solutionStack.Pop();
             }
         }
@@ -496,6 +570,7 @@ namespace myCompiler
     {
         public static void Main(string[] args)
         {
+
             var result = LexicalAnalysis.lexicla_Analysis("./test.txt");
             foreach (var tok in result)
             {
@@ -504,6 +579,11 @@ namespace myCompiler
             var ga = new GrammerAnalysis(result);
             ga.Print_Productions();
             ga.Analysis();
+            Console.WriteLine();
+            ga.Print_Error();
+            Console.WriteLine();
+            ga.print_Symbol_sheet();
+            Console.WriteLine("by huayun 2017-5-8");
         }
     }
 }
